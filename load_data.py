@@ -1,6 +1,6 @@
 import torchvision
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from torchvision.dataset import ImageFolder
+from torchvision.datasets import ImageFolder
 
 def load_data(train_dir=None,
               test_dir=None,
