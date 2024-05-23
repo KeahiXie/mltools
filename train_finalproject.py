@@ -69,9 +69,10 @@ def test_step(model, dataloader, loss_fn, device):
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(y.cpu().numpy())
             all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+    
     test_loss /= len(dataloader)
     test_acc = correct / len(dataloader.dataset)
-    return test_loss, test_acc, all_preds, all_labels, all_probs
+    return test_loss, test_acc, np.array(all_preds), np.array(all_labels), np.array(all_probs)
 
 # Function to print metrics
 def print_metrics(cm, cr, acc, lr):
@@ -135,9 +136,15 @@ def train(model: torch.nn.Module,
         acc = accuracy_score(all_labels, all_preds)
         
         # Calculate ROC AUC for each class
-        roc_auc = {class_name: roc_auc_score(all_labels, np.array(all_probs)[:, i], multi_class='ovr') 
-                   for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"])}
-
+        roc_auc = {}
+        if len(np.unique(all_labels)) == len(["COVID", "Normal", "Pneumonia"]):  # Check if all classes are present
+            for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"]):
+                roc_auc[class_name] = roc_auc_score(all_labels, all_probs[:, i], multi_class='ovr')
+        else:
+            print("Not all classes are present in the predictions; skipping ROC AUC calculation.")
+            for class_name in ["COVID", "Normal", "Pneumonia"]:
+                roc_auc[class_name] = None
+        
         # Log at the end of each epoch
         wandb.log({
             "Epoch": epoch,
