@@ -3,7 +3,7 @@ import torch
 import wandb
 import pandas as pd
 from tqdm.auto import tqdm
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, roc_auc_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from typing import Dict, List, Tuple
 import numpy as np
 
@@ -106,8 +106,7 @@ def train(model: torch.nn.Module,
         "test_acc": [],
         "accuracy_score": [],
         "confusion_matrix": [],
-        "classification_report": [],
-        "roc_auc": []
+        "classification_report": []
     }
     
     model.to(device)
@@ -135,16 +134,6 @@ def train(model: torch.nn.Module,
         cr = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
         acc = accuracy_score(all_labels, all_preds)
         
-        # Calculate ROC AUC for each class
-        roc_auc = {}
-        if len(np.unique(all_labels)) == len(["COVID", "Normal", "Pneumonia"]):  # Check if all classes are present
-            for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"]):
-                roc_auc[class_name] = roc_auc_score(all_labels, all_probs[:, i], multi_class='ovr')
-        else:
-            print("Not all classes are present in the predictions; skipping ROC AUC calculation.")
-            for class_name in ["COVID", "Normal", "Pneumonia"]:
-                roc_auc[class_name] = None
-        
         # Log at the end of each epoch
         wandb.log({
             "Epoch": epoch,
@@ -156,7 +145,7 @@ def train(model: torch.nn.Module,
             "Classification Report": cr,
             "Accuracy Score": acc,
             "Learning Rate": optimizer.param_groups[0]['lr'],
-            "ROC AUC": roc_auc
+            "Predicted Probs": all_probs  # Save predicted probabilities as a histogram
         })
 
         results["train_loss"].append(train_loss)
@@ -166,7 +155,6 @@ def train(model: torch.nn.Module,
         results["accuracy_score"].append(acc)
         results["confusion_matrix"].append(cm)
         results["classification_report"].append(cr)
-        results["roc_auc"].append(roc_auc)
 
         print(
             f"Epoch: {epoch + 1} | "
