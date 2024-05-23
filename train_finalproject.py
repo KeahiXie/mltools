@@ -3,7 +3,7 @@ import torch
 import wandb
 import pandas as pd
 from tqdm.auto import tqdm
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, roc_auc_score, roc_curve
 from typing import Dict, List, Tuple
 import numpy as np
 
@@ -57,7 +57,7 @@ def train_step(model: torch.nn.Module,
 def test_step(model, dataloader, loss_fn, device):
     model.eval()
     test_loss, correct = 0, 0
-    all_preds, all_labels = [], []
+    all_preds, all_labels, all_probs = [], [], []
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
@@ -68,9 +68,10 @@ def test_step(model, dataloader, loss_fn, device):
             correct += (predicted == y).sum().item()
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(y.cpu().numpy())
+            all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
     test_loss /= len(dataloader)
     test_acc = correct / len(dataloader.dataset)
-    return test_loss, test_acc, all_preds, all_labels
+    return test_loss, test_acc, all_preds, all_labels, all_probs
 
 # Function to print metrics
 def print_metrics(cm, cr, acc, lr):
@@ -105,7 +106,8 @@ def train(model: torch.nn.Module,
         "test_acc": [],
         "accuracy_score": [],
         "confusion_matrix": [],
-        "classification_report": []
+        "classification_report": [],
+        "roc_auc": []
     }
     
     model.to(device)
@@ -117,10 +119,10 @@ def train(model: torch.nn.Module,
                                            optimizer=optimizer,
                                            device=device,
                                            epoch=epoch)
-        test_loss, test_acc, all_preds, all_labels = test_step(model=model,
-                                                               dataloader=test_dataloader,
-                                                               loss_fn=loss_fn,
-                                                               device=device)
+        test_loss, test_acc, all_preds, all_labels, all_probs = test_step(model=model,
+                                                                         dataloader=test_dataloader,
+                                                                         loss_fn=loss_fn,
+                                                                         device=device)
 
         if np.isnan(train_loss):
             print(f"Train loss is NaN at epoch {epoch}, reducing learning rate.")
@@ -133,6 +135,11 @@ def train(model: torch.nn.Module,
         cr = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
         acc = accuracy_score(all_labels, all_preds)
         
+        # Calculate ROC AUC for each class
+        roc_auc = {}
+        for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"]):
+            roc_auc[class_name] = roc_auc_score(all_labels, np.array(all_probs)[:, i], multi_class='ovr')
+
         # Log at the end of each epoch
         wandb.log({
             "Epoch": epoch,
@@ -143,7 +150,8 @@ def train(model: torch.nn.Module,
             "Confusion Matrix": wandb.plot.confusion_matrix(probs=None, y_true=all_labels, preds=all_preds, class_names=["COVID", "Normal", "Pneumonia"]),
             "Classification Report": cr,
             "Accuracy Score": acc,
-            "Learning Rate": optimizer.param_groups[0]['lr']
+            "Learning Rate": optimizer.param_groups[0]['lr'],
+            "ROC AUC": roc_auc
         })
 
         results["train_loss"].append(train_loss)
@@ -153,6 +161,7 @@ def train(model: torch.nn.Module,
         results["accuracy_score"].append(acc)
         results["confusion_matrix"].append(cm)
         results["classification_report"].append(cr)
+        results["roc_auc"].append(roc_auc)
 
         print(
             f"Epoch: {epoch + 1} | "
@@ -170,4 +179,3 @@ def train(model: torch.nn.Module,
     wandb.finish()
 
     return results
-
