@@ -22,11 +22,14 @@ class AugmentImageDataset(Dataset):
         class_counts = Counter()
 
         # Count the number of images in each class
+        print("The this dataset includes:")
         for class_idx, class_name in enumerate(class_dirs):
             self.class_to_idx[class_name] = class_idx
             class_dir = os.path.join(self.root_dir, class_name)
             num_images = len(os.listdir(class_dir))
             class_counts[class_idx] = num_images
+            print(f"{class_name}: {num_images}\n")
+            
 
         max_count = max(class_counts.values())
 
@@ -49,6 +52,11 @@ class AugmentImageDataset(Dataset):
                     img_name = random.choice(images)
                     img_path = os.path.join(class_dir, img_name)
                     self.data.append((img_path, class_idx, True))
+        
+        print(f"The original dataset{os.path.basename(self.root_dir)} includes:")
+        print(class_counts)
+        print("The number of each class after data augment:")
+        print(self.augmented_count)
 
     def __len__(self):
         return len(self.data)
