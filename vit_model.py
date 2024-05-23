@@ -72,7 +72,7 @@ class ViT(nn.Module):
         self.embedding_dropout = nn.Dropout(p=embedding_dropout)
         self.patch_embedding = PatchEmbedding(in_channels=in_channels, patch_size=patch_size, embedding_dim=embedding_dim)
         self.transformer_encoder = nn.Sequential(*[TransformerEncoderBlock(embedding_dim=embedding_dim, num_heads=num_heads,
-                                                                            mlp_size=mlp_size, mlp_dropout=mlp_dropout) for _ in range(num_transformer_layers)])
+                                                                            mlp_size=mlp_size, mlp_dropout=mlp_dropout, attn_dropout=attn_dropout) for _ in range(num_transformer_layers)])
         self.classifier = nn.Sequential(
             nn.LayerNorm(normalized_shape=embedding_dim),
             nn.Linear(in_features=embedding_dim, out_features=num_classes)
