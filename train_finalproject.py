@@ -87,11 +87,11 @@ def train(model: torch.nn.Module,
           train_dataloader: torch.utils.data.DataLoader, 
           test_dataloader: torch.utils.data.DataLoader, 
           optimizer: torch.optim.Optimizer,
-          scheduler,
           loss_fn: torch.nn.Module,
           epochs: int,
           device: torch.device,
-          config: Dict) -> Dict[str, List]:
+          config: Dict,
+          scheduler=None) -> Dict[str, List]:
 
     # Set up wandb with API key
     wandb.login(key=config["wandb"]["api_key"])
@@ -123,11 +123,12 @@ def train(model: torch.nn.Module,
                                                                          loss_fn=loss_fn,
                                                                          device=device)
 
-        if np.isnan(train_loss):
-            print(f"Train loss is NaN at epoch {epoch}, reducing learning rate.")
-            scheduler.step(float('inf'))  # Trigger the scheduler as if the loss has stopped improving
-        else:
-            scheduler.step(train_loss)
+        if scheduler is not None:
+            if np.isnan(train_loss):
+                print(f"Train loss is NaN at epoch {epoch}, reducing learning rate.")
+                scheduler.step(float('inf'))  # Trigger the scheduler as if the loss has stopped improving
+            else:
+                scheduler.step(train_loss)
         
         cm = confusion_matrix(all_labels, all_preds)
         cr = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
