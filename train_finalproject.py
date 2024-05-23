@@ -3,7 +3,7 @@ import torch
 import wandb
 import pandas as pd
 from tqdm.auto import tqdm
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, roc_auc_score, roc_curve
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, roc_auc_score
 from typing import Dict, List, Tuple
 import numpy as np
 
@@ -31,26 +31,26 @@ def train_step(model: torch.nn.Module,
         X, y = X.to(device), y.to(device)
         y_pred = model(X)
         loss = loss_fn(y_pred, y)
-        train_loss += loss.item() 
+        train_loss += loss.item()
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
-        train_acc += (y_pred_class == y).sum().item()/len(y_pred)
+        train_acc += (y_pred_class == y).sum().item() / len(y_pred)
 
         # Log at each step (batch)
         wandb.log({
             "Epoch": epoch,
             "Batch": batch,
             "Train Loss": loss.item(),
-            "Train Accuracy": (y_pred_class == y).sum().item()/len(y_pred),
+            "Train Accuracy": (y_pred_class == y).sum().item() / len(y_pred),
             "Learning Rate": optimizer.param_groups[0]['lr']
         })
 
-    train_loss = train_loss / len(dataloader)
-    train_acc = train_acc / len(dataloader)
+    train_loss /= len(dataloader)
+    train_acc /= len(dataloader)
     return train_loss, train_acc
 
 # Testing step function
@@ -96,8 +96,7 @@ def train(model: torch.nn.Module,
     # Set up wandb with API key
     wandb.login(key=config["wandb"]["api_key"])
     
-    wandb.init(project=config["wandb"]["project_name"],
-               config=config)
+    wandb.init(project=config["wandb"]["project_name"], config=config)
 
     results = {
         "train_loss": [],
@@ -128,7 +127,6 @@ def train(model: torch.nn.Module,
             print(f"Train loss is NaN at epoch {epoch}, reducing learning rate.")
             scheduler.step(float('inf'))  # Trigger the scheduler as if the loss has stopped improving
         else:
-        # Step the scheduler with the average train loss
             scheduler.step(train_loss)
         
         cm = confusion_matrix(all_labels, all_preds)
@@ -136,9 +134,8 @@ def train(model: torch.nn.Module,
         acc = accuracy_score(all_labels, all_preds)
         
         # Calculate ROC AUC for each class
-        roc_auc = {}
-        for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"]):
-            roc_auc[class_name] = roc_auc_score(all_labels, np.array(all_probs)[:, i], multi_class='ovr')
+        roc_auc = {class_name: roc_auc_score(all_labels, np.array(all_probs)[:, i], multi_class='ovr') 
+                   for i, class_name in enumerate(["COVID", "Normal", "Pneumonia"])}
 
         # Log at the end of each epoch
         wandb.log({
@@ -172,8 +169,7 @@ def train(model: torch.nn.Module,
         print_metrics(cm, cr, acc, optimizer.param_groups[0]['lr'])
         
         if epoch % config["training"]["save_interval"] == 0 or epoch == epochs - 1:
-            checkpoint = config["checkpoint"]
-            checkpoint_path = os.path.join(wandb.run.dir, f"{checkpoint}_epoch_{epoch}.pth") # Save the checkpoint to wandb
+            checkpoint_path = os.path.join(wandb.run.dir, f"{config['checkpoint']}_epoch_{epoch}.pth") # Save the checkpoint to wandb
             save_checkpoint(epoch, model, optimizer, checkpoint_path)
     
     wandb.finish()
