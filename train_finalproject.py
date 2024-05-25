@@ -90,6 +90,7 @@ def train(model: torch.nn.Module,
           test_dataloader: torch.utils.data.DataLoader, 
           optimizer: torch.optim.Optimizer,
           loss_fn: torch.nn.Module,
+          start_epoch: int,
           epochs: int,
           device: torch.device,
           config: Dict,
@@ -123,7 +124,7 @@ def train(model: torch.nn.Module,
     
     model.to(device)
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in tqdm(range(start_epoch, epochs)):
         train_loss, train_acc = train_step(model=model,
                                            dataloader=train_dataloader,
                                            loss_fn=loss_fn,
@@ -183,3 +184,4 @@ def train(model: torch.nn.Module,
     wandb.finish()
 
     return results
+
