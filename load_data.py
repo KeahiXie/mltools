@@ -77,6 +77,7 @@ def load_data(train_dir=None,
                                                 transform=train_transform,
                                                 augment_transform=augment_transform,
                                                 augment_factor=augment_factor)
+        print(f"The number of augmented images: {augmented_train_dataset.augmented_count}")
         augmented_test_dataset = ImageFolder(test_dir, transform=test_transform)
         # Create DataLoaders for the augmented dataset
         train_dataloader = DataLoader(augmented_train_dataset, batch_size=config["dataset"]["batch_size"], shuffle=True)
