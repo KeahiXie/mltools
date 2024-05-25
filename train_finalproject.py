@@ -6,6 +6,7 @@ from tqdm.auto import tqdm
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from typing import Dict, List, Tuple
 import numpy as np
+from torchinfo import summary
 
 # Function to save the model and optimizer state
 def save_checkpoint(epoch: int, model: torch.nn.Module, optimizer: torch.optim.Optimizer, filename: str):
@@ -98,6 +99,16 @@ def train(model: torch.nn.Module,
     wandb.login(key=config["wandb"]["api_key"])
     
     wandb.init(project=config["wandb"]["project_name"], config=config)
+    sample_batch = next(iter(train_dataloader))
+    input_size = tuple(sample_batch[0].shape)
+    
+    # Generate and log model summary
+    model_summary = summary(model, 
+                            input_size=input_size,
+                            col_names=["input_size", "output_size", "num_params", "trainable"],
+                            col_width=20,
+                            row_settings=["var_names"])  # Use input size from dataloader
+    wandb.log({"Model Summary": str(model_summary)})
 
     results = {
         "train_loss": [],
