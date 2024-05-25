@@ -146,7 +146,8 @@ def train(model: torch.nn.Module,
         cm = confusion_matrix(all_labels, all_preds)
         cr = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
         acc = accuracy_score(all_labels, all_preds)
-        
+
+        all_probs = np.nan_to_num(all_probs, nan=0.0)
         # Log at the end of each epoch
         wandb.log({
             "Epoch": epoch,
