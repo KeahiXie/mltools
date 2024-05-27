@@ -68,6 +68,9 @@ def test_step(model, dataloader, loss_fn, device):
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
+            if contains_nan(X) or contains_nan(y):
+                print("Skipping batch with NaNs")
+                continue
             outputs = model(X)
             loss = loss_fn(outputs, y)
             test_loss += loss.item()
@@ -115,7 +118,6 @@ def train(model: torch.nn.Module,
                             col_names=["input_size", "output_size", "num_params", "trainable"],
                             col_width=20,
                             row_settings=["var_names"])  # Use input size from dataloader
-    print(model_summary)
     wandb.log({"Model Summary": str(model_summary)})
 
     results = {
