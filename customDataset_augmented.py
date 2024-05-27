@@ -12,6 +12,7 @@ class AugmentImageDataset(Dataset):
         self.transform = transform
         self.augment_transform = augment_transform if augment_transform else transform
         self.augment_factor = augment_factor
+        self.data = []
         self.original_count = Counter()
         self.augmented_count = Counter()
         self.class_to_idx = {}
