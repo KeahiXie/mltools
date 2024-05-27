@@ -67,6 +67,8 @@ class AugmentImageDataset(Dataset):
         if is_augmented:
             if self.augment_transform:
                 image = self.augment_transform(image)
+                if torch.isnan(image).any().item():
+                    print(f"NaN found in data at index{idx}")
         else:
             if self.transform:
                 image = self.transform(image)

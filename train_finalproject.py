@@ -8,6 +8,9 @@ from typing import Dict, List, Tuple
 import numpy as np
 from torchinfo import summary
 
+def contains_nan(tensor):
+    return tensor.isnan(tensor).any().item()
+
 # Function to save the model and optimizer state
 def save_checkpoint(epoch: int, model: torch.nn.Module, optimizer: torch.optim.Optimizer, filename: str):
     checkpoint = {
@@ -30,6 +33,9 @@ def train_step(model: torch.nn.Module,
 
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
+        if contains_nan(X) or contains_nan(y):
+            print("Skipping batch with NaNs")
+            continue
         y_pred = model(X)
         loss = loss_fn(y_pred, y)
         train_loss += loss.item()
