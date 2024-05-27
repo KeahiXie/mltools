@@ -147,9 +147,11 @@ def train(model: torch.nn.Module,
         if scheduler is not None:
             if np.isnan(train_loss):
                 print(f"Train loss is NaN at epoch {epoch}, reducing learning rate.")
-                scheduler.step(float('inf'))  # Trigger the scheduler as if the loss has stopped improving
+                # Manually reduce the learning rate
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] *= 0.1
             else:
-                scheduler.step(train_loss)
+                scheduler.step(test_loss) 
         
         cm = confusion_matrix(all_labels, all_preds)
         cr = classification_report(all_labels, all_preds, output_dict=True, zero_division=0)
