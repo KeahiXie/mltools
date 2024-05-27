@@ -12,14 +12,13 @@ class AugmentImageDataset(Dataset):
         self.transform = transform
         self.augment_transform = augment_transform if augment_transform else transform
         self.augment_factor = augment_factor
-        self.data = []
-        self.augmented_count ={}
+        self.original_count = Counter()
+        self.augmented_count = Counter()
         self.class_to_idx = {}
         self.load_and_balance_dataset()
 
     def load_and_balance_dataset(self):
         class_dirs = [d for d in os.listdir(self.root_dir) if os.path.isdir(os.path.join(self.root_dir, d))]
-        class_counts = Counter()
 
         # Count the number of images in each class
         print("The this dataset includes:")
@@ -27,11 +26,11 @@ class AugmentImageDataset(Dataset):
             self.class_to_idx[class_name] = class_idx
             class_dir = os.path.join(self.root_dir, class_name)
             num_images = len(os.listdir(class_dir))
-            class_counts[class_idx] = num_images
-            print(f"{class_name}: {num_images}\n")
+            self.original_count[class_name] = num_images
+            print(f"{class_name}: {num_images}")
             
 
-        max_count = max(class_counts.values())
+        max_count = max(self.original_count.values())
 
         # Load images and augment to balance the dataset
         for class_idx, class_name in enumerate(class_dirs):
@@ -53,10 +52,10 @@ class AugmentImageDataset(Dataset):
                     img_path = os.path.join(class_dir, img_name)
                     self.data.append((img_path, class_idx, True))
         
-        print(f"The original dataset{os.path.basename(self.root_dir)} includes:")
-        print(class_counts)
-        print("The number of each class after data augment:")
-        print(self.augmented_count)
+        total_count = Counter({key: self.original_count[key] + self.augmented_count[key] for key in self.original_count})
+        print(f"Overview of the dataset after augmentation:")
+        for class_name in self.original_count:
+            print(f"{class_name}: {total_count[class_name]}")
 
     def __len__(self):
         return len(self.data)

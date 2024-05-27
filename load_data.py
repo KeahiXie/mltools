@@ -1,6 +1,7 @@
 import torchvision
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision.datasets import ImageFolder
+from collections import Counter
 
 def load_data(train_dir=None,
               test_dir=None,
@@ -72,14 +73,12 @@ def load_data(train_dir=None,
         return train_dataloader, test_dataloader, class_to_idx
     
     elif mode == "augmented":
-        #
-        augmented_train_dataset = dataset_class(root_dir=train_dir, 
-                                                transform=train_transform,
-                                                augment_transform=augment_transform,
-                                                augment_factor=augment_factor)
-        print(f"The number of augmented images: {augmented_train_dataset.augmented_count}")
+        augmented_train_dataset = dataset_class(root_dir=train_dir, transform=train_transform, augment_transform=augment_transform, augment_factor=augment_factor)
+        print(f"Overview of the dataset after augmentation:")
+        total_count = Counter({key: augmented_train_dataset.original_count[key] + augmented_train_dataset.augmented_count[key] for key in augmented_train_dataset.original_count})
+        for class_name in augmented_train_dataset.original_count:
+            print(f"{class_name}: {total_count[class_name]}")
         augmented_test_dataset = ImageFolder(test_dir, transform=test_transform)
-        # Create DataLoaders for the augmented dataset
         train_dataloader = DataLoader(augmented_train_dataset, batch_size=config["dataset"]["batch_size"], shuffle=True)
         test_dataloader = DataLoader(augmented_test_dataset, batch_size=config["dataset"]["batch_size"], shuffle=False)
         class_to_idx = train_dataset.class_to_idx
