@@ -9,7 +9,7 @@ import numpy as np
 from torchinfo import summary
 
 def contains_nan(tensor):
-    return tensor.isnan(tensor).any().item()
+    return tensor.isnan().any().item()
 
 # Function to save the model and optimizer state
 def save_checkpoint(epoch: int, model: torch.nn.Module, optimizer: torch.optim.Optimizer, filename: str):
