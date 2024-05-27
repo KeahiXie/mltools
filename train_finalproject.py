@@ -27,7 +27,8 @@ def train_step(model: torch.nn.Module,
                loss_fn: torch.nn.Module, 
                optimizer: torch.optim.Optimizer,
                device: torch.device,
-               epoch: int) -> Tuple[float, float]:
+               epoch: int,
+               clip_value: float = 1.0) -> Tuple[float, float]:
     model.train()
     train_loss, train_acc = 0, 0
 
@@ -37,11 +38,15 @@ def train_step(model: torch.nn.Module,
             print("Skipping batch with NaNs")
             continue
         y_pred = model(X)
+        if contains_nan(y_pred):
+            print("NaN detected in model predictions, skipping batch")
+            continue
         loss = loss_fn(y_pred, y)
         train_loss += loss.item()
 
         optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=clip_value)
         optimizer.step()
 
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
@@ -53,7 +58,10 @@ def train_step(model: torch.nn.Module,
             "Batch": batch,
             "Train Loss": loss.item(),
             "Train Accuracy": (y_pred_class == y).sum().item() / len(y_pred),
-            "Learning Rate": optimizer.param_groups[0]['lr']
+            "Learning Rate": optimizer.param_groups[0]['lr'],
+            "Batch Data": wandb.Histogram(X.cpu().numpy()),
+            "Batch Labels": wandb.Histogram(y.cpu().numpy()),
+            "Batch Predictions": wandb.Histogram(y_pred_class.cpu().numpy())
         })
 
     train_loss /= len(dataloader)
@@ -72,6 +80,9 @@ def test_step(model, dataloader, loss_fn, device):
                 print("Skipping batch with NaNs")
                 continue
             outputs = model(X)
+            if contains_nan(outputs):
+                print("NaN detected in model outputs, skipping batch")
+                continue
             loss = loss_fn(outputs, y)
             test_loss += loss.item()
             _, predicted = torch.max(outputs, 1)
@@ -138,7 +149,8 @@ def train(model: torch.nn.Module,
                                            loss_fn=loss_fn,
                                            optimizer=optimizer,
                                            device=device,
-                                           epoch=epoch)
+                                           epoch=epoch,
+                                           clip_value=1.0)
         test_loss, test_acc, all_preds, all_labels, all_probs = test_step(model=model,
                                                                          dataloader=test_dataloader,
                                                                          loss_fn=loss_fn,
@@ -195,4 +207,3 @@ def train(model: torch.nn.Module,
     wandb.finish()
 
     return results
-
