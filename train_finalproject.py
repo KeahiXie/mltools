@@ -63,6 +63,7 @@ def train_step(model: torch.nn.Module,
             "Batch Labels": wandb.Histogram(y.cpu().numpy()),
             "Batch Predictions": wandb.Histogram(y_pred_class.cpu().numpy())
         })
+        torch.cuda.empty_cache()
 
     train_loss /= len(dataloader)
     train_acc /= len(dataloader)
@@ -90,6 +91,7 @@ def test_step(model, dataloader, loss_fn, device):
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(y.cpu().numpy())
             all_probs.extend(torch.softmax(outputs, dim=1).cpu().numpy())
+            torch.cuda.empty_cache()
     
     test_loss /= len(dataloader)
     test_acc = correct / len(dataloader.dataset)
