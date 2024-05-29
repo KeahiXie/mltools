@@ -7,9 +7,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 from typing import Dict, List, Tuple
 import numpy as np
 from torchinfo import summary
-from torch.cuda.amp import autocast, GradScaler
 
-scaler = GradScaler()
 
 def contains_nan(tensor):
     return tensor.isnan().any().item()
@@ -24,7 +22,6 @@ def save_checkpoint(epoch: int, model: torch.nn.Module, optimizer: torch.optim.O
     torch.save(checkpoint, filename)
     wandb.save(filename)
 
-# Training step function with gradient accumulation and mixed precision
 def train_step(model: torch.nn.Module, 
                dataloader: torch.utils.data.DataLoader, 
                loss_fn: torch.nn.Module, 
@@ -43,21 +40,24 @@ def train_step(model: torch.nn.Module,
             print("Skipping batch with NaNs")
             continue
         
-        with autocast():
-            y_pred = model(X)
-            if contains_nan(y_pred):
-                print("NaN detected in model predictions, skipping batch")
-                continue
-            loss = loss_fn(y_pred, y) / accumulation_steps
+        y_pred = model(X)
+        if contains_nan(y_pred):
+            print("NaN detected in model predictions, skipping batch")
+            continue
+        loss = loss_fn(y_pred, y) / accumulation_steps
 
-        train_loss += loss.item() * accumulation_steps  # Accumulate the loss correctly
-        scaler.scale(loss).backward()  # Accumulate gradients
+        loss.backward()  # Accumulate gradients
 
         if (batch + 1) % accumulation_steps == 0:
-            scaler.step(optimizer)  # Update model parameters
-            scaler.update()  # Update the scaler for mixed precision
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)  # Clip gradients
+            optimizer.step()  # Update model parameters
             optimizer.zero_grad()  # Clear gradients for next accumulation
-        
+
+            # Save model parameters after each accumulation step (optional)
+            torch.save(model.state_dict(), f'model_epoch_{epoch}_batch_{batch}.pth')
+
+        # Accumulate the loss for logging
+        train_loss += loss.item() * accumulation_steps
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
         train_acc += (y_pred_class == y).sum().item() / len(y_pred)
 
@@ -73,13 +73,10 @@ def train_step(model: torch.nn.Module,
             "Batch Predictions": wandb.Histogram(y_pred_class.cpu().numpy())
         })
 
-        torch.cuda.empty_cache()  # Free up unused memory
-
     train_loss /= len(dataloader)
     train_acc /= len(dataloader)
     return train_loss, train_acc
 
-# Testing step function
 def test_step(model, dataloader, loss_fn, device):
     model.eval()
     test_loss, correct = 0, 0
