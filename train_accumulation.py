@@ -53,9 +53,6 @@ def train_step(model: torch.nn.Module,
             optimizer.step()  # Update model parameters
             optimizer.zero_grad()  # Clear gradients for next accumulation
 
-            # Save model parameters after each accumulation step (optional)
-            torch.save(model.state_dict(), f'model_epoch_{epoch}_batch_{batch}.pth')
-
         # Accumulate the loss for logging
         train_loss += loss.item() * accumulation_steps
         y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
