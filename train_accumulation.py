@@ -137,6 +137,8 @@ def train(model: torch.nn.Module,
                             row_settings=["var_names"])  # Use input size from dataloader
     wandb.log({"Model Summary": str(model_summary)})
 
+    wandb.watch(model, log="all", log_freq=15)
+
     results = {
         "train_loss": [],
         "train_acc": [],
